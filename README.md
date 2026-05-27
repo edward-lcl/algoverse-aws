@@ -64,24 +64,6 @@ This path adapts the setup to your specific project (entry point scripts, data l
 
 ---
 
-## Pre-flight checklist — before you spin up a GPU instance
-
-GPU instances bill the moment they start. Run through this first:
-
-- [ ] AWS account created, $200 credits claimed
-- [ ] Budget alerts set (25/50/75%) — `setup.sh` does this automatically
-- [ ] IAM role created and attached to SageMaker
-- [ ] S3 bucket created
-- [ ] **Data uploaded to S3** — don't start a GPU job that will spend 2h downloading data
-- [ ] Training script runs locally without errors (even CPU-only with 1 batch is fine)
-- [ ] `.sagemaker.env` filled in with real values
-- [ ] `python sagemaker_submit.py --dry-run` passes
-- [ ] GPU quota approved by AWS (check Service Quotas console — new requests take 24–72h)
-
-Only when all boxes are checked should you remove `--dry-run` and pay for GPU time.
-
----
-
 ## After setup — submit your first training job
 
 ```bash
@@ -140,4 +122,4 @@ algoverse-aws/
 
 **Hit a problem the docs don’t cover?** [Open a GitHub issue](https://github.com/edward-lcl/algoverse-aws/issues/new) — describe what you ran, what you expected, and what actually happened. This helps improve the bootstrap for everyone.
 
-> **Note:** `setup.sh` and the AGENTS.md path are tested on macOS and Ubuntu. Windows (WSL2) should work but has seen less testing. Report issues if something breaks.
+> **Note:** `setup.sh` is tested on macOS. Linux and Windows (WSL2) are untested — if something breaks, [open an issue](https://github.com/edward-lcl/algoverse-aws/issues/new).

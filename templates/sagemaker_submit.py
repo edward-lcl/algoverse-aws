@@ -1,6 +1,11 @@
-"""Submit a SageMaker training job for the SJJI EEG project.
+"""Generic SageMaker training job submit script.
 
-Data lives in S3 — training jobs pull from there, no local data needed.
+Before removing --dry-run and paying for GPU time:
+  1. Your data is already in S3 (aws s3 ls s3://$S3_BUCKET/data/ to verify)
+  2. Your training script runs locally without errors (even 1 batch on CPU is enough)
+  3. .sagemaker.env is filled in with real values
+  4. GPU quota is approved (AWS Service Quotas console — new requests take 24-72h)
+
 Spot instances save 60-70%; safe if the training script supports checkpoint resume.
 
 Usage:
