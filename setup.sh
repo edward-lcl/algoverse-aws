@@ -200,7 +200,7 @@ if [[ -n "${QUOTA_CODE}" ]]; then
         --query 'Quota.Value' --output text 2>/dev/null || echo 0)
 fi
 
-if (( $(echo "${CURRENT_QUOTA} >= 1" | bc -l 2>/dev/null || echo 0) )); then
+if awk "BEGIN{exit !(${CURRENT_QUOTA} >= 1)}" 2>/dev/null; then
     success "Quota already approved: ${INSTANCE_TYPE} = ${CURRENT_QUOTA}"
 else
     warn "Quota for ${INSTANCE_TYPE} is 0. Requesting increase to 1..."
@@ -247,7 +247,7 @@ echo -e "${YELLOW}Next steps:${RESET}"
 echo "  1. Edit ~/.sagemaker.env — add HF_TOKEN and PROJECT_SLUG"
 echo "  2. Copy templates/sagemaker_submit.py into your project"
 echo "  3. Run: python sagemaker_submit.py --dry-run"
-if (( $(echo "${CURRENT_QUOTA} < 1" | bc -l 2>/dev/null || echo 1) )); then
+if awk "BEGIN{exit !(${CURRENT_QUOTA} < 1)}" 2>/dev/null; then
     echo ""
     echo -e "  ${YELLOW}⚠ GPU quota pending AWS approval (24–72h).${RESET}"
     echo "    You can prepare everything else while you wait."
