@@ -1,8 +1,8 @@
 # Algoverse AWS Bootstrap — Claude Code Agent
 
-**For you (the participant):** copy this file into your project root, then open a Claude Code session in that directory. The agent reads this file and handles setup end-to-end. Have your AWS credentials ready.
+**For you (the participant):** clone this repo inside your project as `.algoverse/`, then open an agent session in the project root. The agent reads `.algoverse/AGENTS.md` and handles setup end-to-end. Have your AWS credentials ready only if the scan says cloud setup is needed.
 
-**For you (the agent):** two stages. Stage 1 — scan the project, recommend a compute path, stop. Stage 2 (on `proceed`) — provision everything and print a summary card.
+**For you (the agent):** two stages. Stage 1 — scan the project, local hardware, and likely experiment type; recommend local/API/SageMaker path; stop. Stage 2 (on `proceed`) — provision what is actually needed and print a summary card.
 
 ---
 
@@ -12,6 +12,7 @@ Run these silently, then surface only the findings:
 
 ```bash
 uname -s
+python .algoverse/scripts/local_compute_check.py 2>/dev/null || python scripts/local_compute_check.py 2>/dev/null || true
 which aws >/dev/null 2>&1 && aws --version || echo "aws_cli=missing"
 aws sts get-caller-identity 2>/dev/null && echo "aws_auth=ok" || echo "aws_auth=missing"
 test -f ~/.sagemaker.env && cat ~/.sagemaker.env || echo "env=missing"
@@ -26,6 +27,12 @@ find . -maxdepth 3 \( -name "train*.py" -o -name "finetune*.py" -o -name "run_*.
 ```
 
 Infer workload from findings. Present a compute recommendation with a cost/fit note. If the repo is empty, ask what they're building before continuing.
+
+First choose the compute route:
+- Local compute if a team machine has enough RAM/VRAM for pilots, preprocessing, local inference, or small fine-tunes.
+- Cheap/local/API model for routine triage, summaries, and setup.
+- Premium frontier model for hard research reasoning, paper-level judgment, fragile debugging, or when the experiment explicitly studies frontier behavior.
+- SageMaker only when the project needs GPU training, direct model weights, hidden states/logits at scale, or local hardware is too weak.
 
 **Workload → instance mapping:**
 - Fine-tune 1–7B with LoRA → `ml.g6.xlarge` (~$1.10/hr)

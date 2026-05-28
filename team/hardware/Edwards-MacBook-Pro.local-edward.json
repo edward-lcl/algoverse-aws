@@ -1,0 +1,270 @@
+{
+  "models": [
+    {
+      "best_quant": "mlx-8bit",
+      "capabilities": [
+        "Tool Use"
+      ],
+      "capability_ids": [
+        "tool_use"
+      ],
+      "category": "Reasoning",
+      "context_length": 262144,
+      "disk_size_gb": 35.95,
+      "effective_context_length": 8192,
+      "estimated_tps": 36.8,
+      "fit_level": "Perfect",
+      "gguf_sources": [],
+      "installed": false,
+      "is_moe": true,
+      "license": null,
+      "memory_available_gb": 48.0,
+      "memory_required_gb": 18.4,
+      "moe_offloaded_gb": null,
+      "name": "hesamation/Qwen3.6-35B-A3B-Claude-4.6-Opus-Reasoning-Distilled",
+      "notes": [
+        "Context capped at 8192 tokens for estimation (model supports up to 262144; use --max-context to override)",
+        "Unified memory: GPU and CPU share the same pool",
+        "MoE: 8/256 experts active (all share unified memory pool)",
+        "Best quantization for hardware: mlx-8bit (model default: Q4_K_M)",
+        "Baseline estimated speed: 36.8 tok/s"
+      ],
+      "ollama_name": null,
+      "parameter_count": "36.0B",
+      "params_b": 35.95,
+      "provider": "hesamation",
+      "release_date": null,
+      "run_mode": "GPU",
+      "runtime": "MLX",
+      "runtime_label": "MLX",
+      "score": 98.6,
+      "score_components": {
+        "context": 100.0,
+        "fit": 90.7,
+        "quality": 100.0,
+        "speed": 100.0
+      },
+      "total_memory_gb": 18.4,
+      "use_case": "Advanced reasoning, chain-of-thought",
+      "utilization_pct": 38.3
+    },
+    {
+      "best_quant": "mlx-8bit",
+      "capabilities": [
+        "Tool Use"
+      ],
+      "capability_ids": [
+        "tool_use"
+      ],
+      "category": "Reasoning",
+      "context_length": 262144,
+      "disk_size_gb": 35.95,
+      "effective_context_length": 8192,
+      "estimated_tps": 36.8,
+      "fit_level": "Perfect",
+      "gguf_sources": [],
+      "installed": false,
+      "is_moe": true,
+      "license": null,
+      "memory_available_gb": 48.0,
+      "memory_required_gb": 18.4,
+      "moe_offloaded_gb": null,
+      "name": "lordx64/Qwen3.6-35B-A3B-Claude-4.7-Opus-Reasoning-Distilled",
+      "notes": [
+        "Context capped at 8192 tokens for estimation (model supports up to 262144; use --max-context to override)",
+        "Unified memory: GPU and CPU share the same pool",
+        "MoE: 8/256 experts active (all share unified memory pool)",
+        "Best quantization for hardware: mlx-8bit (model default: Q4_K_M)",
+        "Baseline estimated speed: 36.8 tok/s"
+      ],
+      "ollama_name": null,
+      "parameter_count": "36.0B",
+      "params_b": 35.95,
+      "provider": "lordx64",
+      "release_date": null,
+      "run_mode": "GPU",
+      "runtime": "MLX",
+      "runtime_label": "MLX",
+      "score": 98.6,
+      "score_components": {
+        "context": 100.0,
+        "fit": 90.7,
+        "quality": 100.0,
+        "speed": 100.0
+      },
+      "total_memory_gb": 18.4,
+      "use_case": "Advanced reasoning, chain-of-thought",
+      "utilization_pct": 38.3
+    },
+    {
+      "best_quant": "mlx-8bit",
+      "capabilities": [
+        "Tool Use"
+      ],
+      "capability_ids": [
+        "tool_use"
+      ],
+      "category": "Reasoning",
+      "context_length": 262144,
+      "disk_size_gb": 35.95,
+      "effective_context_length": 8192,
+      "estimated_tps": 36.8,
+      "fit_level": "Perfect",
+      "gguf_sources": [
+        {
+          "provider": "mradermacher",
+          "repo": "mradermacher/Qwen3.5-35B-A3B-Claude-4.6-Opus-Reasoning-Distilled-GGUF"
+        }
+      ],
+      "installed": false,
+      "is_moe": true,
+      "license": null,
+      "memory_available_gb": 48.0,
+      "memory_required_gb": 18.4,
+      "moe_offloaded_gb": null,
+      "name": "Jackrong/Qwen3.5-35B-A3B-Claude-4.6-Opus-Reasoning-Distilled",
+      "notes": [
+        "Context capped at 8192 tokens for estimation (model supports up to 262144; use --max-context to override)",
+        "Unified memory: GPU and CPU share the same pool",
+        "MoE: 8/256 experts active (all share unified memory pool)",
+        "Best quantization for hardware: mlx-8bit (model default: Q4_K_M)",
+        "Baseline estimated speed: 36.8 tok/s"
+      ],
+      "ollama_name": null,
+      "parameter_count": "36.0B",
+      "params_b": 35.95,
+      "provider": "jackrong",
+      "release_date": "2026-03-07",
+      "run_mode": "GPU",
+      "runtime": "MLX",
+      "runtime_label": "MLX",
+      "score": 98.6,
+      "score_components": {
+        "context": 100.0,
+        "fit": 90.7,
+        "quality": 100.0,
+        "speed": 100.0
+      },
+      "total_memory_gb": 18.4,
+      "use_case": "Advanced reasoning, chain-of-thought",
+      "utilization_pct": 38.3
+    },
+    {
+      "best_quant": "mlx-8bit",
+      "capabilities": [
+        "Tool Use"
+      ],
+      "capability_ids": [
+        "tool_use"
+      ],
+      "category": "Coding",
+      "context_length": 262144,
+      "disk_size_gb": 30.53,
+      "effective_context_length": 8192,
+      "estimated_tps": 44.0,
+      "fit_level": "Perfect",
+      "gguf_sources": [],
+      "installed": false,
+      "is_moe": true,
+      "license": null,
+      "memory_available_gb": 48.0,
+      "memory_required_gb": 15.6,
+      "moe_offloaded_gb": null,
+      "name": "Qwen/Qwen3-Coder-30B-A3B-Instruct-FP8",
+      "notes": [
+        "Context capped at 8192 tokens for estimation (model supports up to 262144; use --max-context to override)",
+        "Unified memory: GPU and CPU share the same pool",
+        "MoE: 8/128 experts active (all share unified memory pool)",
+        "Best quantization for hardware: mlx-8bit (model default: Q4_K_M)",
+        "Baseline estimated speed: 44.0 tok/s"
+      ],
+      "ollama_name": null,
+      "parameter_count": "30.5B",
+      "params_b": 30.53,
+      "provider": "Alibaba",
+      "release_date": null,
+      "run_mode": "GPU",
+      "runtime": "MLX",
+      "runtime_label": "MLX",
+      "score": 97.9,
+      "score_components": {
+        "context": 100.0,
+        "fit": 86.0,
+        "quality": 100.0,
+        "speed": 100.0
+      },
+      "total_memory_gb": 15.6,
+      "use_case": "Code generation and completion",
+      "utilization_pct": 32.5
+    },
+    {
+      "best_quant": "mlx-8bit",
+      "capabilities": [
+        "Tool Use"
+      ],
+      "capability_ids": [
+        "tool_use"
+      ],
+      "category": "Coding",
+      "context_length": 262144,
+      "disk_size_gb": 30.53,
+      "effective_context_length": 8192,
+      "estimated_tps": 44.0,
+      "fit_level": "Perfect",
+      "gguf_sources": [],
+      "installed": false,
+      "is_moe": true,
+      "license": null,
+      "memory_available_gb": 48.0,
+      "memory_required_gb": 15.6,
+      "moe_offloaded_gb": null,
+      "name": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
+      "notes": [
+        "Context capped at 8192 tokens for estimation (model supports up to 262144; use --max-context to override)",
+        "Unified memory: GPU and CPU share the same pool",
+        "MoE: 8/128 experts active (all share unified memory pool)",
+        "Best quantization for hardware: mlx-8bit (model default: Q4_K_M)",
+        "Baseline estimated speed: 44.0 tok/s"
+      ],
+      "ollama_name": "qwen3-coder",
+      "parameter_count": "30.5B",
+      "params_b": 30.53,
+      "provider": "Alibaba",
+      "release_date": null,
+      "run_mode": "GPU",
+      "runtime": "MLX",
+      "runtime_label": "MLX",
+      "score": 97.9,
+      "score_components": {
+        "context": 100.0,
+        "fit": 86.0,
+        "quality": 100.0,
+        "speed": 100.0
+      },
+      "total_memory_gb": 15.6,
+      "use_case": "Code generation and completion",
+      "utilization_pct": 32.5
+    }
+  ],
+  "system": {
+    "available_ram_gb": 42.39,
+    "backend": "Metal",
+    "cpu_cores": 18,
+    "cpu_name": "Apple M5 Pro",
+    "gpu_count": 1,
+    "gpu_name": "Apple M5 Pro",
+    "gpu_vram_gb": 48.0,
+    "gpus": [
+      {
+        "backend": "Metal",
+        "count": 1,
+        "name": "Apple M5 Pro",
+        "unified_memory": true,
+        "vram_gb": 48.0
+      }
+    ],
+    "has_gpu": true,
+    "total_ram_gb": 48.0,
+    "unified_memory": true
+  }
+}

@@ -3,6 +3,7 @@
 # Usage: curl -fsSL https://raw.githubusercontent.com/algoverse/algoverse-aws/main/setup.sh | bash
 #
 # What this does:
+#   0. Checks local compute (llmfit) — saves team/hardware/<host>.json
 #   1. Checks / installs AWS CLI
 #   2. Walks you through account credentials
 #   3. Creates S3 bucket, IAM role, budget alerts
@@ -13,6 +14,24 @@
 # Windows: run inside WSL2.
 
 set -euo pipefail
+
+# ── Dry-run mode ─────────────────────────────────────────────────────────────── #
+# Usage: bash setup.sh --dry-run
+# Runs the full script but skips all AWS API calls and file writes.
+DRY_RUN=false
+for arg in "$@"; do
+    [[ "$arg" == "--dry-run" ]] && DRY_RUN=true
+done
+[[ "$DRY_RUN" == true ]] && echo -e "\033[1;33m[DRY RUN] No AWS resources will be created.\033[0m"
+
+# Wrapper: skip AWS calls in dry-run mode
+aws_run() {
+    if [[ "$DRY_RUN" == true ]]; then
+        echo "  [dry-run] aws $*"
+    else
+        aws "$@"
+    fi
+}
 
 # ── Colors ────────────────────────────────────────────────────────────────── #
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -41,6 +60,76 @@ if [[ "${OSTYPE}" == "msys"* ]] || [[ "${OSTYPE}" == "cygwin"* ]]; then
     error "Windows detected. Run this inside WSL2: wsl --install (from Admin PowerShell), then reopen as Ubuntu."
 fi
 
+# ── Step 0b: Local compute check (llmfit) ─────────────────────────────────── #
+header "Local compute check"
+info "Checking what models your hardware can run locally..."
+
+if ! command -v llmfit &>/dev/null; then
+    info "Installing llmfit..."
+    LLMFIT_VER=$(curl -fsSL https://api.github.com/repos/AlexsJones/llmfit/releases/latest 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin)['tag_name'].lstrip('v'))" 2>/dev/null || echo "0.9.28")
+    if [[ "${OSTYPE}" == "darwin"* ]]; then
+        brew install llmfit 2>/dev/null || {
+            warn "Homebrew failed, installing from release..."
+            RAW_ARCH=$(uname -m)  # arm64 or x86_64
+            ARCH=$([[ "$RAW_ARCH" == "arm64" ]] && echo "aarch64" || echo "x86_64")
+            curl -fsSL "https://github.com/AlexsJones/llmfit/releases/download/v${LLMFIT_VER}/llmfit-v${LLMFIT_VER}-${ARCH}-apple-darwin.tar.gz" -o /tmp/llmfit.tar.gz
+            tar -xzf /tmp/llmfit.tar.gz -C /tmp/
+            mkdir -p "$HOME/.local/bin"
+            cp "/tmp/llmfit-v${LLMFIT_VER}-${ARCH}-apple-darwin/llmfit" "$HOME/.local/bin/llmfit"
+            export PATH="$HOME/.local/bin:$PATH"
+            chmod +x "$HOME/.local/bin/llmfit"
+            export PATH="$HOME/.local/bin:$PATH"
+        }
+    else
+        # Linux: installer script requires sudo+TTY; use direct tarball instead
+        ARCH=$(uname -m)  # x86_64 or aarch64
+        mkdir -p "$HOME/.local/bin"
+        curl -fsSL "https://github.com/AlexsJones/llmfit/releases/download/v${LLMFIT_VER}/llmfit-v${LLMFIT_VER}-${ARCH}-unknown-linux-gnu.tar.gz" -o /tmp/llmfit.tar.gz
+        tar -xzf /tmp/llmfit.tar.gz -C /tmp/
+        cp "/tmp/llmfit-v${LLMFIT_VER}-${ARCH}-unknown-linux-gnu/llmfit" "$HOME/.local/bin/llmfit"
+        chmod +x "$HOME/.local/bin/llmfit"
+        export PATH="$HOME/.local/bin:$PATH"
+    fi
+fi
+
+if command -v llmfit &>/dev/null; then
+    HARDWARE_DIR="team/hardware"
+    mkdir -p "${HARDWARE_DIR}"
+    HARDWARE_FILE="${HARDWARE_DIR}/$(hostname)-$(whoami).json"
+    info "Scanning hardware → ${HARDWARE_FILE}"
+    llmfit recommend --json --limit 5 > "${HARDWARE_FILE}" 2>/dev/null || \
+        llmfit system --json > "${HARDWARE_FILE}" 2>/dev/null || \
+        echo '{"error":"llmfit scan failed"}' > "${HARDWARE_FILE}"
+
+    # Summarise fit for the user
+    BEST_FIT=$(python3 -c "
+import json, sys
+try:
+    d = json.load(open('${HARDWARE_FILE}'))
+    models = d.get('models', [])
+    fits = [m.get('fit_level','').lower() for m in models if m.get('fit_level','')]
+    order = ['perfect','good','marginal','too_tight']
+    best = next((f for f in order if f in fits), 'unknown')
+    print(best)
+except: print('unknown')
+" 2>/dev/null)
+
+    case "${BEST_FIT}" in
+        perfect|good)
+            success "Local compute: viable (best fit = ${BEST_FIT}). Local inference + SageMaker both available."
+            ;;
+        marginal)
+            warn "Local compute: marginal. Useful for quick tests; use SageMaker for real training runs."
+            ;;
+        *)
+            warn "Local compute: limited or unknown. Recommend SageMaker for all GPU work."
+            ;;
+    esac
+    success "Hardware profile saved to ${HARDWARE_FILE} — commit this to team/hardware/"
+else
+    warn "llmfit unavailable — skipping local compute check. Install manually: brew install llmfit (Mac) or curl -fsSL https://llmfit.axjns.dev/install.sh | sh (Linux)"
+fi
+
 # ── Step 1: AWS CLI ───────────────────────────────────────────────────────── #
 header "Step 1/6 — AWS CLI"
 if ! command -v aws &>/dev/null; then
@@ -49,13 +138,30 @@ if ! command -v aws &>/dev/null; then
         if command -v brew &>/dev/null; then
             brew install awscli
         else
-            curl -s "https://awscli.amazonaws.com/AWSCLIV2.pkg" -o /tmp/awscliv2.pkg
-            sudo installer -pkg /tmp/awscliv2.pkg -target /
+            # No Homebrew — use pip3 (ships with macOS, no sudo needed)
+            pip3 install --quiet awscli --user 2>/dev/null || \
+                pip3 install --quiet awscli 2>/dev/null || \
+                warn "AWS CLI install failed. Install manually: https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html"
+            # Add all Python user bin dirs to PATH
+            for pybin in "$HOME"/Library/Python/*/bin; do
+                [[ -d "$pybin" ]] && export PATH="$pybin:$PATH"
+            done
+            export PATH="$HOME/.local/bin:$PATH"
         fi
     else
-        curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+        # Install to user dir to avoid sudo requirement
+        AWSCLI_ARCH=$(uname -m)  # x86_64 or aarch64
+        curl -s "https://awscli.amazonaws.com/awscli-exe-linux-${AWSCLI_ARCH}.zip" -o /tmp/awscliv2.zip
         unzip -q /tmp/awscliv2.zip -d /tmp/
-        sudo /tmp/aws/install
+        CAN_SUDO=false
+        sudo -n /bin/true 2>/dev/null && CAN_SUDO=true || true
+        if [[ "$CAN_SUDO" == true ]]; then
+            sudo /tmp/aws/install
+        else
+            # No passwordless sudo — install to ~/.local
+            /tmp/aws/install --install-dir "$HOME/.local/aws-cli" --bin-dir "$HOME/.local/bin"
+            export PATH="$HOME/.local/bin:$PATH"
+        fi
     fi
 fi
 AWS_VERSION=$(aws --version 2>&1 | cut -d/ -f2 | cut -d' ' -f1)
@@ -71,6 +177,9 @@ echo ""
 if aws sts get-caller-identity &>/dev/null; then
     ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
     success "Already authenticated (account ${ACCOUNT_ID})"
+elif [[ "$DRY_RUN" == true ]]; then
+    ACCOUNT_ID="123456789012"
+    warn "[dry-run] No credentials — using placeholder account ID"
 else
     warn "Not authenticated. Running aws configure..."
     aws configure
@@ -82,7 +191,7 @@ fi
 header "Step 3/6 — Your details"
 echo ""
 echo -n "Your handle/username (e.g. edward, jane-doe): "
-read -r HANDLE
+[[ "$DRY_RUN" == true ]] && HANDLE="dry-run-user" && echo "dry-run-user" || read -r HANDLE
 HANDLE="${HANDLE:-participant}"
 HANDLE="${HANDLE//[^a-zA-Z0-9-]/-}"  # sanitize
 
@@ -94,7 +203,7 @@ echo "  3) ml.g6.12xlarge — 4× L4,   96GB, ~\$5.67/hr  (13–34B models)"
 echo "  4) ml.g6e.xlarge  — 1× L40S, 48GB, ~\$1.86/hr  (larger models, Studio only)"
 echo ""
 echo -n "Pick 1-4 [default: 1]: "
-read -r INSTANCE_CHOICE
+[[ "$DRY_RUN" == true ]] && INSTANCE_CHOICE="1" && echo "1" || read -r INSTANCE_CHOICE
 case "${INSTANCE_CHOICE:-1}" in
     1) INSTANCE_TYPE="ml.g6.xlarge"   ;;
     2) INSTANCE_TYPE="ml.g5.4xlarge"  ;;
@@ -110,12 +219,16 @@ info "Creating budget with alerts at \$50, \$100, \$150..."
 
 EMAIL=$(aws iam get-user --query 'User.Tags[?Key==`email`].Value' --output text 2>/dev/null || true)
 if [[ -z "${EMAIL}" ]]; then
-    echo -n "Your email for budget alerts: "
-    read -r EMAIL
+    if [[ "$DRY_RUN" == true ]]; then
+        EMAIL="dry-run@example.com"
+    else
+        echo -n "Your email for budget alerts: "
+        read -r EMAIL
+    fi
 fi
 
 # Create budget (idempotent — fails silently if exists)
-aws budgets create-budget \
+aws_run budgets create-budget \
     --account-id "${ACCOUNT_ID}" \
     --budget "{
         \"BudgetName\": \"algoverse-${HANDLE}-total\",
@@ -139,16 +252,16 @@ BUCKET="algoverse-${HANDLE}-${ACCOUNT_ID:0:8}-${AWS_REGION}"
 info "Creating S3 bucket: ${BUCKET}"
 
 if [[ "${AWS_REGION}" == "us-east-1" ]]; then
-    aws s3api create-bucket --bucket "${BUCKET}" --region "${AWS_REGION}" 2>/dev/null \
+    aws_run s3api create-bucket --bucket "${BUCKET}" --region "${AWS_REGION}" 2>/dev/null \
         && success "Bucket created" || warn "Bucket may already exist"
 else
-    aws s3api create-bucket --bucket "${BUCKET}" --region "${AWS_REGION}" \
+    aws_run s3api create-bucket --bucket "${BUCKET}" --region "${AWS_REGION}" \
         --create-bucket-configuration LocationConstraint="${AWS_REGION}" 2>/dev/null \
         && success "Bucket created" || warn "Bucket may already exist"
 fi
 
 # Enable versioning (cheap protection against accidental deletes)
-aws s3api put-bucket-versioning --bucket "${BUCKET}" \
+aws_run s3api put-bucket-versioning --bucket "${BUCKET}" \
     --versioning-configuration Status=Enabled 2>/dev/null || true
 
 # Create IAM role for SageMaker
@@ -164,16 +277,16 @@ TRUST_POLICY='{
     }]
 }'
 
-aws iam create-role \
+aws_run iam create-role \
     --role-name "${ROLE_NAME}" \
     --assume-role-policy-document "${TRUST_POLICY}" \
     --description "SageMaker execution role for Algoverse participant ${HANDLE}" \
     2>/dev/null && success "IAM role created" || warn "Role may already exist"
 
 # Attach managed policies
-aws iam attach-role-policy --role-name "${ROLE_NAME}" \
+aws_run iam attach-role-policy --role-name "${ROLE_NAME}" \
     --policy-arn arn:aws:iam::aws:policy/AmazonSageMakerFullAccess 2>/dev/null || true
-aws iam attach-role-policy --role-name "${ROLE_NAME}" \
+aws_run iam attach-role-policy --role-name "${ROLE_NAME}" \
     --policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess 2>/dev/null || true
 
 ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ROLE_NAME}"
@@ -204,7 +317,7 @@ if awk "BEGIN{exit !(${CURRENT_QUOTA} >= 1)}" 2>/dev/null; then
     success "Quota already approved: ${INSTANCE_TYPE} = ${CURRENT_QUOTA}"
 else
     warn "Quota for ${INSTANCE_TYPE} is 0. Requesting increase to 1..."
-    aws service-quotas request-service-quota-increase \
+    aws_run service-quotas request-service-quota-increase \
         --service-code sagemaker \
         --quota-code "${QUOTA_CODE}" \
         --desired-value 1 \

@@ -1,14 +1,42 @@
-# Algoverse AWS Bootstrap
+# Algoverse Experiment Bootstrap
 
-Get a GPU running on AWS in under an hour. Works for fine-tuning, SSL pretraining, probing, and eval workloads.
+Project-local SOP for choosing, launching, monitoring, and shutting down research compute. It can use local machines, API models, Bedrock/OpenRouter, or SageMaker depending on the experiment.
 
 ---
 
-## Before you start
+## Recommended use
 
-**Do you actually need a GPU?**
+Clone this repo inside the research project you are setting up:
 
-If your project calls an LLM via API (RAG, evals, agent loops), use **Bedrock** — it's dramatically cheaper and requires no setup. Read [`docs/00-bedrock-vs-gpu.md`](docs/00-bedrock-vs-gpu.md) first.
+```bash
+cd /path/to/your-project
+git clone https://github.com/edward-lcl/algoverse-aws .algoverse
+```
+
+Then run the setup from the project root:
+
+```bash
+python .algoverse/scripts/local_compute_check.py
+```
+
+If you are using an agent, point it at the project root and this repo together:
+
+```text
+Use .algoverse/AGENTS.md as the compute setup SOP for this project.
+First inspect the project artifact, then recommend local compute, API models, or SageMaker.
+```
+
+This keeps the SOP next to the actual code/proposal, so the agent can infer entry points, data layout, team handoffs, and cost risk instead of asking the researcher to fill out a long form.
+
+---
+
+## Before you spend cloud money
+
+**Do you actually need remote compute?**
+
+Start with [`docs/05-local-compute-and-model-routing.md`](docs/05-local-compute-and-model-routing.md). Many projects can run early experiments locally or with cheap API models before using SageMaker.
+
+If the project calls an LLM via API (RAG, evals, agent loops), use the model routing policy in [`docs/05-local-compute-and-model-routing.md`](docs/05-local-compute-and-model-routing.md). Premium frontier models are allowed and encouraged when the research question needs them; they should be deliberate, not the default for every loop.
 
 If you need to fine-tune, run open-weight models, extract hidden states, or do contrastive pretraining — continue here.
 
@@ -26,14 +54,14 @@ Runs in your terminal. Installs the AWS CLI if missing, walks you through creden
 
 > **Windows:** run this inside WSL2 (`wsl --install` from Admin PowerShell, then reopen as Ubuntu).
 
-### Path 2 — Claude Code (best for project-specific wiring)
+### Path 2 — Agent-guided setup (best for project-specific wiring)
 
 1. Install [Claude Code](https://claude.ai/code)
 2. Open your project directory
-3. Copy [`AGENTS.md`](AGENTS.md) into your project root
-4. Start a Claude Code session — it will read the file and guide you
+3. Clone this repo as `.algoverse/`
+4. Start a coding-agent session and tell it to use `.algoverse/AGENTS.md`
 
-This path adapts the setup to your specific project (entry point scripts, data layout, instance sizing).
+This path adapts the setup to your specific project (entry point scripts, data layout, local compute, model routing, instance sizing, and team split).
 
 ---
 
@@ -48,6 +76,18 @@ This path adapts the setup to your specific project (entry point scripts, data l
 | SageMaker access | Quota request for GPU instance type |
 
 ---
+
+## Compute routing guide
+
+| Need | First route | Cloud route |
+|---|---|---|
+| Prompting, triage, summaries | Cheap/local/API model | Bedrock/OpenRouter if needed |
+| Frontier reasoning, hard research synthesis | Premium frontier model | OpenRouter/direct provider |
+| Local model evals, hidden states, small open models | Best team laptop/workstation | SageMaker if local hardware is too weak |
+| 1–7B LoRA fine-tune | Local GPU if >=16-24GB VRAM | `ml.g6.xlarge` |
+| 1–7B SSL / SimCLR pretraining | Local GPU only for pilots | `ml.g5.4xlarge` |
+| 13–34B LoRA | Usually remote | `ml.g6.12xlarge` |
+| Large-scale pretraining | Remote | `ml.g6e.12xlarge` or larger |
 
 ## Instance guide (what GPU to pick)
 
@@ -97,12 +137,15 @@ algoverse-aws/
 ├── README.md               ← you are here
 ├── setup.sh                ← one-command bootstrap
 ├── AGENTS.md               ← Claude Code bootstrap prompt
+├── scripts/
+│   └── local_compute_check.py
 ├── docs/
 │   ├── 00-bedrock-vs-gpu.md
 │   ├── 01-account-setup.md
 │   ├── 02-iam-options.md
 │   ├── 03-s3-conventions.md
-│   └── 04-multi-gpu.md
+│   ├── 04-multi-gpu.md
+│   └── 05-local-compute-and-model-routing.md
 ├── templates/
 │   ├── sagemaker_submit.py ← generic training job submit script
 │   └── .env.example
