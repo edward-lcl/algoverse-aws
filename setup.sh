@@ -28,9 +28,19 @@ done
 aws_run() {
     if [[ "$DRY_RUN" == true ]]; then
         echo "  [dry-run] aws $*"
-    else
-        aws "$@"
+        return 0
     fi
+    local attempt=0 max=4 delay=5
+    while (( attempt < max )); do
+        if aws "$@"; then return 0; fi
+        attempt=$(( attempt + 1 ))
+        if (( attempt < max )); then
+            warn "AWS call failed (attempt ${attempt}/${max}), retrying in ${delay}s..."
+            sleep $delay
+            delay=$(( delay * 2 ))
+        fi
+    done
+    return 1
 }
 
 # ── Colors ────────────────────────────────────────────────────────────────── #
