@@ -165,6 +165,37 @@ aws sagemaker describe-training-job \
 | `ResourceLimitExceeded` | GPU quota not approved | Request quota increase in Service Quotas console; allow 24–72h |
 | Stopped / `SpotInterruption` | Spot instance preempted | Not a code failure — resubmit; add checkpoint save/load to survive preemption |
 | Stopped / `MaxRuntimeExceeded` | Training takes longer than `max_run` | Increase `--max-hours`; estimate: ~6-7 min/epoch on g5.4xlarge for 180k-segment dataset |
+| `InternalServerError: We encountered an internal error` | **Frequently not a transient AWS error.** SageMaker surfaces this when a job runs to completion but exits non-zero and produces no model output. Always check CloudWatch logs before assuming AWS-side. |
+
+### The silent zero-output failure (most dangerous pattern)
+
+A job can show `InProgress → Failed: InternalServerError` even when AWS infrastructure is fine. This happens when your processing code swallows exceptions and produces zero output:
+
+```
+# Progress log showing the bug:
+[500/68128]  0 segs | 7.0 files/s | ETA 161m | skip=0 err=500   ← 100% error rate
+
+# Progress log showing a working job:
+[500/68128] 29,257 segs | 4.2 files/s | ETA 266m | skip=0 err=45  ← small error rate, real output
+```
+
+If `err ≈ processed` and `segs = 0`, the bug is in your code, not AWS.
+
+**To diagnose:** download one file and run the processing function locally:
+
+```bash
+aws s3 cp s3://$S3_BUCKET/data/raw/<path/to/file> /tmp/test_file --region $AWS_REGION
+python3 -c "
+from src.preprocess import process_eeg_file
+try:
+    segs = process_eeg_file('/tmp/test_file', unified=True)
+    print('OK:', segs.shape)
+except Exception as e:
+    print('ERROR:', type(e).__name__, e)
+"
+```
+
+**Real example (SJJI EEG, 2026-05-29):** `process_eeg_file(unified=True)` called `mne.interpolate_bads()` on channels added via `add_reference_channels()`. TUH EDF files use a `tcp_le` bipolar montage — after channel name normalization, positions were unknown to MNE and interpolation produced NaN/inf arrays. All 68k files silently failed. Five preprocess job attempts all hit `InternalServerError` before the true cause was found. Fix: replace MNE interpolation with zero-padding for missing channels.
 
 ### Step 2 — Read CloudWatch logs
 
