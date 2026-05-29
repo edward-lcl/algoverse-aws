@@ -178,6 +178,18 @@ Next:
 
 ---
 
+## After setup — before submitting a job
+
+Read `docs/06-job-lifecycle.md`. It has the pre-flight checklist, common failure patterns with fixes, debugging workflow, and runtime estimates. The setup SOP above gets you to a working environment; the lifecycle doc prevents the common job failures that waste GPU credits.
+
+Key rules from that doc:
+- Never mount a raw data corpus as a SageMaker channel unless the job explicitly needs raw files — download size kills jobs before training starts
+- Every `Dataset.__getitem__` must pad AND truncate to a fixed size, not just truncate — truncate-only causes batch collation crashes on variable-shape inputs
+- Run the entry point locally on 1 batch before submitting
+- Always do a `--dry-run` smoke test before paying for GPU time
+
+---
+
 ## Hard rules
 
 - Do NOT generate IAM access keys

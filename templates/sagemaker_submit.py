@@ -46,8 +46,8 @@ JOB_CONFIGS = {
     "pretrain": {
         "entry_point": "experiments/ssl_pilot.py",
         "instance":    "ml.g5.4xlarge",   # A10G 24GB VRAM — good for SimCLR at scale
-        "max_hours":   12,
-        "data_channels": ["tuh_eeg", "processed_unified"],
+        "max_hours":   24,
+        "data_channels": ["processed_unified"],  # mount processed segments, NOT raw corpus
         "description": "TUH-scale SimCLR SSL pretraining (domain-adversarial)",
     },
     "finetune": {
