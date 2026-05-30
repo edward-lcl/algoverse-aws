@@ -139,6 +139,36 @@ aws logs tail /aws/sagemaker/TrainingJobs \
 
 Or in the AWS console: CloudWatch → Log groups → `/aws/sagemaker/TrainingJobs` → filter by job name.
 
+### Push notifications (don't poll — get told)
+
+Polling `describe-training-job` by hand is how jobs fail silently for days. Wire job state changes to email once, and every Completed / Failed / Stopped job notifies you automatically with its failure reason.
+
+This is a one-time setup per account. Email is the default because it needs no extra infrastructure.
+
+```bash
+REGION=$AWS_REGION
+ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+EMAIL=you@example.com
+
+# 1. Topic + email subscription (confirm via the link AWS emails you)
+TOPIC=$(aws sns create-topic --region $REGION --name sagemaker-alerts --query TopicArn --output text)
+aws sns subscribe --region $REGION --topic-arn "$TOPIC" --protocol email --notification-endpoint "$EMAIL"
+
+# 2. Let EventBridge publish to the topic
+aws sns set-topic-attributes --region $REGION --topic-arn "$TOPIC" --attribute-name Policy --attribute-value \
+  "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"events.amazonaws.com\"},\"Action\":\"sns:Publish\",\"Resource\":\"$TOPIC\"}]}"
+
+# 3. Rule: fire on terminal training-job states
+aws events put-rule --region $REGION --name sagemaker-job-state \
+  --event-pattern '{"source":["aws.sagemaker"],"detail-type":["SageMaker Training Job State Change"],"detail":{"TrainingJobStatus":["Completed","Failed","Stopped"]}}'
+
+# 4. Target the topic with a readable message (job name + status + reason)
+aws events put-targets --region $REGION --rule sagemaker-job-state --targets \
+  "[{\"Id\":\"sns\",\"Arn\":\"$TOPIC\",\"InputTransformer\":{\"InputPathsMap\":{\"name\":\"\$.detail.TrainingJobName\",\"status\":\"\$.detail.TrainingJobStatus\",\"reason\":\"\$.detail.FailureReason\"},\"InputTemplate\":\"\\\"SageMaker job <name> is now <status>. Reason: <reason>\\\"\"}}]"
+```
+
+> **Personal agent / digital-twin systems:** if you run an assistant on a chat surface (Discord, Slack, Telegram), you can route these alerts there instead of — or in addition to — email. Point the EventBridge rule at a Lambda (or an SNS→HTTPS subscription) that posts to your channel webhook, so failures land where you already are. Email is the simple default; the chat hook is an optional expansion for people with that infrastructure already standing.
+
 ---
 
 ## Diagnosing failures
